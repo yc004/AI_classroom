@@ -1,0 +1,257 @@
+import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const router = express.Router();
+
+// 获取当前文件的目录路径
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// 历史记录存储路径
+const historyFilePath = path.join(__dirname, '../../data/history.json');
+// 配置文件路径
+const configFilePath = path.join(__dirname, '../../data/config.json');
+
+// 确保数据目录存在
+const ensureDataDir = () => {
+  const dataDir = path.join(__dirname, '../../data');
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+  if (!fs.existsSync(historyFilePath)) {
+    fs.writeFileSync(historyFilePath, JSON.stringify([]));
+  }
+  if (!fs.existsSync(configFilePath)) {
+    fs.writeFileSync(configFilePath, JSON.stringify({
+      textModel: {
+        provider: 'deepseek',
+        baseUrl: 'https://api.deepseek.com/v1',
+        modelName: 'deepseek-chat',
+        apiKey: ''
+      },
+      imageModel: {
+        provider: 'deepseek',
+        baseUrl: 'https://api.deepseek.com/v1',
+        modelName: 'deepseek-vision',
+        apiKey: ''
+      },
+      videoModel: {
+        provider: 'deepseek',
+        baseUrl: 'https://api.deepseek.com/v1',
+        modelName: 'deepseek-video',
+        apiKey: ''
+      },
+      systemSettings: {
+        port: 3001,
+        allowLanAccess: true,
+        rateLimit: 100
+      }
+    }));
+  }
+};
+
+// 获取配置
+const getConfig = (): any => {
+  ensureDataDir();
+  const data = fs.readFileSync(configFilePath, 'utf8');
+  return JSON.parse(data);
+};
+
+// 保存历史记录
+const saveHistory = (item: any) => {
+  ensureDataDir();
+  const history = JSON.parse(fs.readFileSync(historyFilePath, 'utf8'));
+  history.push(item);
+  // 限制历史记录数量
+  if (history.length > 1000) {
+    history.splice(0, history.length - 1000);
+  }
+  fs.writeFileSync(historyFilePath, JSON.stringify(history, null, 2));
+};
+
+// 模拟文本生成
+const generateText = async (prompt: string, model: string, parameters: any): Promise<string> => {
+  // 这里应该调用实际的大模型API
+  // 现在使用模拟数据
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(`这是一个模拟的文本生成结果，基于提示词: ${prompt}\n\n模型: ${model}\n参数: ${JSON.stringify(parameters)}`);
+    }, 1000);
+  });
+};
+
+// 模拟图像生成
+const generateImage = async (prompt: string, model: string, parameters: any): Promise<string> => {
+  // 这里应该调用实际的图像生成API
+  // 现在使用模拟数据
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      // 使用占位符图像
+      const imageUrl = `https://via.placeholder.com/${parameters.size || '1024x1024'}?text=AI+Generated+Image`;
+      resolve(imageUrl);
+    }, 2000);
+  });
+};
+
+// 模拟视频生成
+const generateVideo = async (prompt: string, model: string, parameters: any): Promise<string> => {
+  // 这里应该调用实际的视频生成API
+  // 现在使用模拟数据
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      // 使用占位符视频
+      const videoUrl = 'https://example.com/placeholder-video.mp4';
+      resolve(videoUrl);
+    }, 3000);
+  });
+};
+
+// 文本生成
+router.post('/text/generate', async (req, res) => {
+  const { prompt, model, parameters, studentId, studentName } = req.body;
+  
+  if (!prompt || !studentId || !studentName) {
+    return res.json({ success: false, error: '请输入提示词和学生信息' });
+  }
+  
+  try {
+    const result = await generateText(prompt, model || 'deepseek', parameters || {});
+    
+    // 保存历史记录
+    const historyItem = {
+      id: Date.now().toString(),
+      type: 'text',
+      prompt,
+      parameters,
+      result,
+      timestamp: Date.now(),
+      model: model || 'deepseek',
+      studentId,
+      studentName
+    };
+    saveHistory(historyItem);
+    
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.json({ success: false, error: '生成失败，请重试' });
+  }
+});
+
+// 图像生成
+router.post('/image/generate', async (req, res) => {
+  const { prompt, model, parameters, studentId, studentName } = req.body;
+  
+  if (!prompt || !studentId || !studentName) {
+    return res.json({ success: false, error: '请输入提示词和学生信息' });
+  }
+  
+  try {
+    const result = await generateImage(prompt, model || 'deepseek', parameters || {});
+    
+    // 保存历史记录
+    const historyItem = {
+      id: Date.now().toString(),
+      type: 'image',
+      prompt,
+      parameters,
+      result,
+      timestamp: Date.now(),
+      model: model || 'deepseek',
+      studentId,
+      studentName
+    };
+    saveHistory(historyItem);
+    
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.json({ success: false, error: '生成失败，请重试' });
+  }
+});
+
+// 视频生成
+router.post('/video/generate', async (req, res) => {
+  const { prompt, model, parameters, studentId, studentName } = req.body;
+  
+  if (!prompt || !studentId || !studentName) {
+    return res.json({ success: false, error: '请输入提示词和学生信息' });
+  }
+  
+  try {
+    const result = await generateVideo(prompt, model || 'deepseek', parameters || {});
+    
+    // 保存历史记录
+    const historyItem = {
+      id: Date.now().toString(),
+      type: 'video',
+      prompt,
+      parameters,
+      result,
+      timestamp: Date.now(),
+      model: model || 'deepseek',
+      studentId,
+      studentName
+    };
+    saveHistory(historyItem);
+    
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.json({ success: false, error: '生成失败，请重试' });
+  }
+});
+
+// 获取历史记录
+router.get('/history', (req, res) => {
+  ensureDataDir();
+  const history = JSON.parse(fs.readFileSync(historyFilePath, 'utf8'));
+  res.json({ success: true, data: history });
+});
+
+// 删除历史记录
+router.delete('/history', (req, res) => {
+  const { id } = req.body;
+  
+  if (!id) {
+    return res.json({ success: false, error: '请输入历史记录ID' });
+  }
+  
+  ensureDataDir();
+  const history = JSON.parse(fs.readFileSync(historyFilePath, 'utf8'));
+  const filteredHistory = history.filter((item: any) => item.id !== id);
+  
+  if (filteredHistory.length === history.length) {
+    return res.json({ success: false, error: '历史记录不存在' });
+  }
+  
+  fs.writeFileSync(historyFilePath, JSON.stringify(filteredHistory, null, 2));
+  res.json({ success: true });
+});
+
+// 获取配置
+router.get('/config', (req, res) => {
+  const config = getConfig();
+  res.json({ success: true, data: config });
+});
+
+// 更新配置
+router.post('/config', (req, res) => {
+  const { textModel, imageModel, videoModel, systemSettings } = req.body;
+  
+  try {
+    const config = getConfig();
+    const updatedConfig = {
+      textModel: textModel || config.textModel,
+      imageModel: imageModel || config.imageModel,
+      videoModel: videoModel || config.videoModel,
+      systemSettings: systemSettings || config.systemSettings
+    };
+    
+    fs.writeFileSync(configFilePath, JSON.stringify(updatedConfig, null, 2));
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, error: '更新配置失败' });
+  }
+});
+
+export default router;
