@@ -131,14 +131,21 @@ const generateImage = async (prompt: string, model: string, parameters: any): Pr
   
   try {
     if (imageModelConfig.provider === 'volcengine') {
-      // 使用火山引擎SDK - 暂时使用模拟数据，需要确认正确的方法名
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          // 使用占位符图像
-          const imageUrl = `https://via.placeholder.com/${parameters.size || '1024x1024'}?text=VolcEngine+Generated+Image`;
-          resolve(imageUrl);
-        }, 2000);
+      // 使用火山引擎SDK
+      const client = new ArkRuntimeClient({
+        apiKey: imageModelConfig.apiKey,
       });
+      
+      // 使用 images.generate 方法，与 OpenAI SDK 兼容
+      const response = await (client as any).images.generate({
+        model: imageModelConfig.modelName,
+        prompt: prompt,
+        n: parameters.n || 1,
+        size: parameters.size || '1024x1024',
+        ...parameters
+      });
+      
+      return response.data[0].url || '';
     } else {
       // 使用OpenAI客户端
       const openai = new OpenAI({
@@ -169,14 +176,49 @@ const generateVideo = async (prompt: string, model: string, parameters: any): Pr
   
   try {
     if (videoModelConfig.provider === 'volcengine') {
-      // 使用火山引擎SDK - 暂时使用模拟数据，需要确认正确的方法名
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          // 使用占位符视频
-          const videoUrl = 'https://example.com/volcengine-placeholder-video.mp4';
-          resolve(videoUrl);
-        }, 3000);
+      // 使用火山引擎SDK
+      const client = new ArkRuntimeClient({
+        apiKey: videoModelConfig.apiKey,
       });
+      
+      // 创建视频生成任务
+      const createResponse = await (client as any).content_generation.tasks.create({
+        model: videoModelConfig.modelName,
+        content: [
+          {
+            type: 'text',
+            text: prompt
+          }
+        ],
+        resolution: parameters.resolution || '720p',
+        ratio: parameters.ratio || '16:9',
+        duration: parameters.duration || 5,
+        ...parameters
+      });
+      
+      const taskId = createResponse.id;
+      
+      // 轮询任务状态
+      let taskStatus = 'queued';
+      let taskResult: any = null;
+      let pollingCount = 0;
+      const maxPollingCount = 60; // 最多轮询60次
+      const pollingInterval = 5000; // 每5秒轮询一次
+      
+      while (taskStatus !== 'succeeded' && taskStatus !== 'failed' && pollingCount < maxPollingCount) {
+        await new Promise(resolve => setTimeout(resolve, pollingInterval));
+        taskResult = await (client as any).content_generation.tasks.get({
+          task_id: taskId
+        });
+        taskStatus = taskResult.status;
+        pollingCount++;
+      }
+      
+      if (taskStatus === 'succeeded' && taskResult.output && taskResult.output.video) {
+        return taskResult.output.video.url || '';
+      } else {
+        throw new Error(`视频生成失败: ${taskResult.error?.message || 'Unknown error'}`);
+      }
     } else {
       // 注意：OpenAI目前没有提供视频生成API
       // 这里使用模拟数据，实际项目中可以接入其他视频生成服务
