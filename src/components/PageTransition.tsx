@@ -13,6 +13,7 @@ const PageTransition: React.FC<PageTransitionProps> = ({
   return (
     <div
       className={cn(
+        'animate-fade-in-up',
         className
       )}
     >
