@@ -12,6 +12,17 @@ const ImageGenerator: React.FC = () => {
   const [error, setError] = useState('');
   const [studentInfo, setStudentInfo] = useState({ id: '', name: '' });
   const [imageSize, setImageSize] = useState('1024x1024');
+  const [referenceImage, setReferenceImage] = useState<File | null>(null);
+  
+  // 图片转Base64的辅助函数
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+      reader.readAsDataURL(file);
+    });
+  };
 
   useEffect(() => {
     const studentId = localStorage.getItem('studentId');
@@ -40,20 +51,29 @@ const ImageGenerator: React.FC = () => {
       const configData = await configResponse.json();
       const imageModel = configData.success ? configData.data.imageModel : { provider: 'deepseek' };
       
+      // 准备请求数据
+      const requestData: any = {
+        prompt,
+        model: imageModel.provider,
+        parameters: {
+          size: imageSize,
+        },
+        studentId: studentInfo.id,
+        studentName: studentInfo.name,
+      };
+
+      // 如果有参考图，转换为Base64
+      if (referenceImage) {
+        const base64Image = await fileToBase64(referenceImage);
+        requestData.referenceImage = base64Image;
+      }
+      
       const response = await fetch('/api/image/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          prompt,
-          model: imageModel.provider,
-          parameters: {
-            size: imageSize,
-          },
-          studentId: studentInfo.id,
-          studentName: studentInfo.name,
-        }),
+        body: JSON.stringify(requestData),
       });
 
       const data = await response.json();
@@ -161,6 +181,39 @@ const ImageGenerator: React.FC = () => {
                     <option value="1024x1536">1024x1536 (纵向)</option>
                     <option value="1536x1024">1536x1024 (横向)</option>
                   </Select>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-white/80">参考图上传</label>
+                    <div className="flex items-center space-x-4">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            setReferenceImage(e.target.files[0]);
+                          }
+                        }}
+                        className="hidden"
+                        id="reference-image-upload"
+                      />
+                      <label
+                        htmlFor="reference-image-upload"
+                        className="flex-1 cursor-pointer p-4 border-2 border-dashed border-white/20 rounded-xl hover:border-white/40 transition-colors text-center"
+                      >
+                        <div className="text-2xl mb-2">🖼️</div>
+                        <p className="text-sm text-white/70">点击上传参考图</p>
+                      </label>
+                      {referenceImage && (
+                        <div className="flex-shrink-0">
+                          <img 
+                            src={URL.createObjectURL(referenceImage)} 
+                            alt="参考图" 
+                            className="w-16 h-16 rounded-lg object-cover border border-white/10"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
                   <Button
                     type="submit"

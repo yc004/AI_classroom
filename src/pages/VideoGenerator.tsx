@@ -12,6 +12,19 @@ const VideoGenerator: React.FC = () => {
   const [error, setError] = useState('');
   const [studentInfo, setStudentInfo] = useState({ id: '', name: '' });
   const [videoDuration, setVideoDuration] = useState(5);
+  const [startFrame, setStartFrame] = useState<File | null>(null);
+  const [endFrame, setEndFrame] = useState<File | null>(null);
+  const [referenceImage, setReferenceImage] = useState<File | null>(null);
+  
+  // 图片转Base64的辅助函数
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+      reader.readAsDataURL(file);
+    });
+  };
 
   useEffect(() => {
     const studentId = localStorage.getItem('studentId');
@@ -40,20 +53,37 @@ const VideoGenerator: React.FC = () => {
       const configData = await configResponse.json();
       const videoModel = configData.success ? configData.data.videoModel : { provider: 'deepseek' };
       
+      // 准备请求数据
+      const requestData: any = {
+        prompt,
+        model: videoModel.provider,
+        parameters: {
+          duration: videoDuration,
+        },
+        studentId: studentInfo.id,
+        studentName: studentInfo.name,
+      };
+
+      // 处理首尾帧和参考图
+      if (startFrame) {
+        const base64StartFrame = await fileToBase64(startFrame);
+        requestData.startFrame = base64StartFrame;
+      }
+      if (endFrame) {
+        const base64EndFrame = await fileToBase64(endFrame);
+        requestData.endFrame = base64EndFrame;
+      }
+      if (referenceImage) {
+        const base64ReferenceImage = await fileToBase64(referenceImage);
+        requestData.referenceImage = base64ReferenceImage;
+      }
+      
       const response = await fetch('/api/video/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          prompt,
-          model: videoModel.provider,
-          parameters: {
-            duration: videoDuration,
-          },
-          studentId: studentInfo.id,
-          studentName: studentInfo.name,
-        }),
+        body: JSON.stringify(requestData),
       });
 
       const data = await response.json();
@@ -161,6 +191,105 @@ const VideoGenerator: React.FC = () => {
                     <option value={15}>15秒 (中等)</option>
                     <option value={20}>20秒 (详细)</option>
                   </Select>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-white/80">首尾帧上传</label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="block text-xs text-white/60">开始帧</label>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                setStartFrame(e.target.files[0]);
+                              }
+                            }}
+                            className="hidden"
+                            id="start-frame-upload"
+                          />
+                          <label
+                            htmlFor="start-frame-upload"
+                            className="cursor-pointer p-3 border-2 border-dashed border-white/20 rounded-xl hover:border-white/40 transition-colors text-center"
+                          >
+                            <div className="text-xl mb-1">🎬</div>
+                            <p className="text-xs text-white/70">上传开始帧</p>
+                          </label>
+                          {startFrame && (
+                            <div className="mt-2">
+                              <img 
+                                src={URL.createObjectURL(startFrame)} 
+                                alt="开始帧" 
+                                className="w-full h-20 rounded-lg object-cover border border-white/10"
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-xs text-white/60">结束帧</label>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                setEndFrame(e.target.files[0]);
+                              }
+                            }}
+                            className="hidden"
+                            id="end-frame-upload"
+                          />
+                          <label
+                            htmlFor="end-frame-upload"
+                            className="cursor-pointer p-3 border-2 border-dashed border-white/20 rounded-xl hover:border-white/40 transition-colors text-center"
+                          >
+                            <div className="text-xl mb-1">🎭</div>
+                            <p className="text-xs text-white/70">上传结束帧</p>
+                          </label>
+                          {endFrame && (
+                            <div className="mt-2">
+                              <img 
+                                src={URL.createObjectURL(endFrame)} 
+                                alt="结束帧" 
+                                className="w-full h-20 rounded-lg object-cover border border-white/10"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-white/80">参考图上传</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            setReferenceImage(e.target.files[0]);
+                          }
+                        }}
+                        className="hidden"
+                        id="reference-image-upload"
+                      />
+                      <label
+                        htmlFor="reference-image-upload"
+                        className="cursor-pointer p-4 border-2 border-dashed border-white/20 rounded-xl hover:border-white/40 transition-colors text-center"
+                      >
+                        <div className="text-2xl mb-2">🖼️</div>
+                        <p className="text-sm text-white/70">点击上传参考图</p>
+                      </label>
+                      {referenceImage && (
+                        <div className="mt-2">
+                          <img 
+                            src={URL.createObjectURL(referenceImage)} 
+                            alt="参考图" 
+                            className="w-full h-32 rounded-lg object-cover border border-white/10"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
                   <Button
                     type="submit"
