@@ -8,6 +8,7 @@ interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  imageUrl?: string;
   timestamp: number;
 }
 
@@ -23,7 +24,34 @@ const TextGenerator: React.FC = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [studentInfo, setStudentInfo] = useState({ id: '', name: '' });
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // 清理ObjectURL的函数
+  const cleanupObjectUrls = () => {
+    messages.forEach(message => {
+      if (message.imageUrl && message.imageUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(message.imageUrl);
+      }
+    });
+  };
+
+  // 组件卸载时清理
+  useEffect(() => {
+    return () => {
+      cleanupObjectUrls();
+    };
+  }, []);
+
+  // 图片转Base64的辅助函数
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+      reader.readAsDataURL(file);
+    });
+  };
 
   // 自动滚动到底部
   const scrollToBottom = () => {
@@ -47,18 +75,26 @@ const TextGenerator: React.FC = () => {
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() && !selectedImage) return;
+
+    // 处理图片预览
+    let imageUrl: string | undefined;
+    if (selectedImage) {
+      imageUrl = URL.createObjectURL(selectedImage);
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
       content: input.trim(),
+      imageUrl,
       timestamp: Date.now()
     };
 
     setMessages(prev => [...prev, userMessage]);
     const prompt = input.trim();
     setInput('');
+    setSelectedImage(null);
     setLoading(true);
 
     try {
@@ -67,20 +103,29 @@ const TextGenerator: React.FC = () => {
       const configData = await configResponse.json();
       const textModel = configData.success ? configData.data.textModel : { provider: 'deepseek' };
       
+      // 准备请求数据
+      const requestData: any = {
+        prompt,
+        model: textModel.provider,
+        parameters: {
+          maxTokens: 1000,
+        },
+        studentId: studentInfo.id,
+        studentName: studentInfo.name,
+      };
+
+      // 如果有图片，转换为Base64
+      if (selectedImage) {
+        const base64Image = await fileToBase64(selectedImage);
+        requestData.image = base64Image;
+      }
+      
       const response = await fetch('/api/text/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          prompt,
-          model: textModel.provider,
-          parameters: {
-            maxTokens: 1000,
-          },
-          studentId: studentInfo.id,
-          studentName: studentInfo.name,
-        }),
+        body: JSON.stringify(requestData),
       });
 
       const data = await response.json();
@@ -186,6 +231,15 @@ const TextGenerator: React.FC = () => {
                   </div>
                   {/* 消息内容 */}
                   <div className={`p-4 rounded-2xl ${message.role === 'user' ? 'bg-gradient-to-br from-blue-600 to-purple-600 text-white rounded-tr-sm' : 'bg-white/5 backdrop-blur-sm border border-white/10 text-white rounded-tl-sm'}`}>
+                    {message.imageUrl && (
+                      <div className="mb-3">
+                        <img 
+                          src={message.imageUrl} 
+                          alt="Message image" 
+                          className="w-full max-w-sm rounded-lg border border-white/10 shadow-sm object-cover"
+                        />
+                      </div>
+                    )}
                     <div className="whitespace-pre-wrap text-sm md:text-base leading-relaxed">{message.content}</div>
                     <div className={`text-xs mt-2 ${message.role === 'user' ? 'text-blue-200' : 'text-white/60'}`}>
                       {formatTime(message.timestamp)}
@@ -235,11 +289,43 @@ const TextGenerator: React.FC = () => {
                 }}
                 disabled={loading}
                 fullWidth
-                className="pr-16 min-h-[80px]"
+                className="pr-28 min-h-[80px]"
               />
+              {/* 图片上传按钮 */}
+              <div className="absolute right-20 bottom-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setSelectedImage(e.target.files[0]);
+                    }
+                  }}
+                  className="hidden"
+                  id="image-upload"
+                />
+                <label
+                  htmlFor="image-upload"
+                  className="cursor-pointer p-3 rounded-xl hover:bg-white/10 transition-colors"
+                >
+                  <svg className="w-5 h-5 text-white/70 hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </label>
+              </div>
+              {/* 已选择图片预览 */}
+              {selectedImage && (
+                <div className="absolute left-3 top-3 bg-white/10 backdrop-blur-sm rounded-lg p-1 border border-white/10">
+                  <img 
+                    src={URL.createObjectURL(selectedImage)} 
+                    alt="Selected image" 
+                    className="w-10 h-10 rounded-md object-cover"
+                  />
+                </div>
+              )}
               <Button
                 type="submit"
-                disabled={loading || !input.trim()}
+                disabled={loading || (!input.trim() && !selectedImage)}
                 loading={loading}
                 size="sm"
                 variant="primary"
