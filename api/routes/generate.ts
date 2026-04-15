@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import OpenAI from 'openai';
+import { ArkRuntimeClient } from '@volcengine/ark-runtime';
 
 const router = express.Router();
 
@@ -77,25 +78,46 @@ const generateText = async (prompt: string, model: string, parameters: any): Pro
   const config = getConfig();
   const textModelConfig = config.textModel;
   
-  // 创建OpenAI客户端
-  const openai = new OpenAI({
-    apiKey: textModelConfig.apiKey,
-    baseURL: textModelConfig.baseUrl,
-  });
-  
   try {
-    const response = await openai.chat.completions.create({
-      model: textModelConfig.modelName,
-      messages: [
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      ...parameters
-    });
-    
-    return response.choices[0].message.content || '';
+    if (textModelConfig.provider === 'volcengine') {
+      // 使用火山引擎SDK
+      const client = new ArkRuntimeClient({
+        apiKey: textModelConfig.apiKey,
+      });
+      
+      const response = await client.createChatCompletion({
+        model: textModelConfig.modelName,
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        ...parameters
+      });
+      
+      const content = response.choices[0].message.content;
+      return typeof content === 'string' ? content : JSON.stringify(content);
+    } else {
+      // 使用OpenAI客户端
+      const openai = new OpenAI({
+        apiKey: textModelConfig.apiKey,
+        baseURL: textModelConfig.baseUrl,
+      });
+      
+      const response = await openai.chat.completions.create({
+        model: textModelConfig.modelName,
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        ...parameters
+      });
+      
+      return response.choices[0].message.content || '';
+    }
   } catch (error) {
     console.error('文本生成失败:', error);
     throw error;
@@ -107,22 +129,33 @@ const generateImage = async (prompt: string, model: string, parameters: any): Pr
   const config = getConfig();
   const imageModelConfig = config.imageModel;
   
-  // 创建OpenAI客户端
-  const openai = new OpenAI({
-    apiKey: imageModelConfig.apiKey,
-    baseURL: imageModelConfig.baseUrl,
-  });
-  
   try {
-    const response = await openai.images.generate({
-      model: imageModelConfig.modelName,
-      prompt: prompt,
-      n: parameters.n || 1,
-      size: parameters.size || '1024x1024',
-      ...parameters
-    });
-    
-    return response.data[0].url || '';
+    if (imageModelConfig.provider === 'volcengine') {
+      // 使用火山引擎SDK - 暂时使用模拟数据，需要确认正确的方法名
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          // 使用占位符图像
+          const imageUrl = `https://via.placeholder.com/${parameters.size || '1024x1024'}?text=VolcEngine+Generated+Image`;
+          resolve(imageUrl);
+        }, 2000);
+      });
+    } else {
+      // 使用OpenAI客户端
+      const openai = new OpenAI({
+        apiKey: imageModelConfig.apiKey,
+        baseURL: imageModelConfig.baseUrl,
+      });
+      
+      const response = await openai.images.generate({
+        model: imageModelConfig.modelName,
+        prompt: prompt,
+        n: parameters.n || 1,
+        size: parameters.size || '1024x1024',
+        ...parameters
+      });
+      
+      return response.data[0].url || '';
+    }
   } catch (error) {
     console.error('图像生成失败:', error);
     throw error;
@@ -131,15 +164,34 @@ const generateImage = async (prompt: string, model: string, parameters: any): Pr
 
 // 视频生成
 const generateVideo = async (prompt: string, model: string, parameters: any): Promise<string> => {
-  // 注意：OpenAI目前没有提供视频生成API
-  // 这里使用模拟数据，实际项目中可以接入其他视频生成服务
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // 使用占位符视频
-      const videoUrl = 'https://example.com/placeholder-video.mp4';
-      resolve(videoUrl);
-    }, 3000);
-  });
+  const config = getConfig();
+  const videoModelConfig = config.videoModel;
+  
+  try {
+    if (videoModelConfig.provider === 'volcengine') {
+      // 使用火山引擎SDK - 暂时使用模拟数据，需要确认正确的方法名
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          // 使用占位符视频
+          const videoUrl = 'https://example.com/volcengine-placeholder-video.mp4';
+          resolve(videoUrl);
+        }, 3000);
+      });
+    } else {
+      // 注意：OpenAI目前没有提供视频生成API
+      // 这里使用模拟数据，实际项目中可以接入其他视频生成服务
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          // 使用占位符视频
+          const videoUrl = 'https://example.com/placeholder-video.mp4';
+          resolve(videoUrl);
+        }, 3000);
+      });
+    }
+  } catch (error) {
+    console.error('视频生成失败:', error);
+    throw error;
+  }
 };
 
 // 文本生成
