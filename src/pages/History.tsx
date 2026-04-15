@@ -294,7 +294,7 @@ const History: React.FC = () => {
               </Card>
             ))}
           </div>
-        )}</div>
+        )}
       </div>
     </PageTransition>
   );
