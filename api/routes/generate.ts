@@ -2,6 +2,7 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import OpenAI from 'openai';
 
 const router = express.Router();
 
@@ -71,34 +72,67 @@ const saveHistory = (item: any) => {
   fs.writeFileSync(historyFilePath, JSON.stringify(history, null, 2));
 };
 
-// 模拟文本生成
+// 文本生成
 const generateText = async (prompt: string, model: string, parameters: any): Promise<string> => {
-  // 这里应该调用实际的大模型API
-  // 现在使用模拟数据
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(`这是一个模拟的文本生成结果，基于提示词: ${prompt}\n\n模型: ${model}\n参数: ${JSON.stringify(parameters)}`);
-    }, 1000);
+  const config = getConfig();
+  const textModelConfig = config.textModel;
+  
+  // 创建OpenAI客户端
+  const openai = new OpenAI({
+    apiKey: textModelConfig.apiKey,
+    baseURL: textModelConfig.baseUrl,
   });
+  
+  try {
+    const response = await openai.chat.completions.create({
+      model: textModelConfig.modelName,
+      messages: [
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      ...parameters
+    });
+    
+    return response.choices[0].message.content || '';
+  } catch (error) {
+    console.error('文本生成失败:', error);
+    throw error;
+  }
 };
 
-// 模拟图像生成
+// 图像生成
 const generateImage = async (prompt: string, model: string, parameters: any): Promise<string> => {
-  // 这里应该调用实际的图像生成API
-  // 现在使用模拟数据
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // 使用占位符图像
-      const imageUrl = `https://via.placeholder.com/${parameters.size || '1024x1024'}?text=AI+Generated+Image`;
-      resolve(imageUrl);
-    }, 2000);
+  const config = getConfig();
+  const imageModelConfig = config.imageModel;
+  
+  // 创建OpenAI客户端
+  const openai = new OpenAI({
+    apiKey: imageModelConfig.apiKey,
+    baseURL: imageModelConfig.baseUrl,
   });
+  
+  try {
+    const response = await openai.images.generate({
+      model: imageModelConfig.modelName,
+      prompt: prompt,
+      n: parameters.n || 1,
+      size: parameters.size || '1024x1024',
+      ...parameters
+    });
+    
+    return response.data[0].url || '';
+  } catch (error) {
+    console.error('图像生成失败:', error);
+    throw error;
+  }
 };
 
-// 模拟视频生成
+// 视频生成
 const generateVideo = async (prompt: string, model: string, parameters: any): Promise<string> => {
-  // 这里应该调用实际的视频生成API
-  // 现在使用模拟数据
+  // 注意：OpenAI目前没有提供视频生成API
+  // 这里使用模拟数据，实际项目中可以接入其他视频生成服务
   return new Promise((resolve) => {
     setTimeout(() => {
       // 使用占位符视频
