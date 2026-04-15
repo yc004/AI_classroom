@@ -1,4 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const ALLOWED_VIDEO_TYPES = ['video/mp4'];
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_VIDEO_SIZE = 20 * 1024 * 1024; // 20MB
 
 const VideoGenerator: React.FC = () => {
   const [prompt, setPrompt] = useState('');
@@ -7,6 +12,10 @@ const VideoGenerator: React.FC = () => {
   const [error, setError] = useState('');
   const [studentInfo, setStudentInfo] = useState({ id: '', name: '' });
   const [videoDuration, setVideoDuration] = useState(5);
+  const [uploadType, setUploadType] = useState<'image' | 'video'>('image'); // 'image' for 首帧图片, 'video' for 基础视频
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const studentId = localStorage.getItem('studentId');
@@ -35,33 +44,117 @@ const VideoGenerator: React.FC = () => {
       const configData = await configResponse.json();
       const videoModel = configData.success ? configData.data.videoModel : { provider: 'deepseek' };
       
-      const response = await fetch('/api/video/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt,
-          model: videoModel.provider,
-          parameters: {
-            duration: videoDuration,
-          },
-          studentId: studentInfo.id,
-          studentName: studentInfo.name,
-        }),
-      });
+      if (uploadedFile) {
+        // 带文件的请求
+        const formData = new FormData();
+        formData.append('prompt', prompt);
+        formData.append('model', videoModel.provider);
+        formData.append('parameters', JSON.stringify({ 
+          duration: videoDuration 
+        }));
+        formData.append('studentId', studentInfo.id);
+        formData.append('studentName', studentInfo.name);
+        formData.append(uploadType === 'image' ? 'firstFrame' : 'baseVideo', uploadedFile);
+        
+        const response = await fetch('/api/video/generate', {
+          method: 'POST',
+          body: formData,
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (data.success) {
-        setResult(data.data);
+        if (data.success) {
+          setResult(data.data);
+        } else {
+          setError(data.error || '生成失败');
+        }
       } else {
-        setError(data.error || '生成失败');
+        // 普通文本请求
+        const response = await fetch('/api/video/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt,
+            model: videoModel.provider,
+            parameters: {
+              duration: videoDuration,
+            },
+            studentId: studentInfo.id,
+            studentName: studentInfo.name,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          setResult(data.data);
+        } else {
+          setError(data.error || '生成失败');
+        }
       }
     } catch (err) {
       setError('网络错误，请重试');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 验证文件类型和大小
+    if (uploadType === 'image') {
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        setError('请上传 JPG、PNG 或 WebP 格式的图片');
+        return;
+      }
+      if (file.size > MAX_IMAGE_SIZE) {
+        setError('哎呀，图片太大了，请压缩到 5MB 以内哦！');
+        return;
+      }
+    } else {
+      if (!ALLOWED_VIDEO_TYPES.includes(file.type)) {
+        setError('请上传 MP4 格式的视频');
+        return;
+      }
+      if (file.size > MAX_VIDEO_SIZE) {
+        setError('视频太大了，请压缩到 20MB 以内哦！');
+        return;
+      }
+    }
+
+    // 生成预览
+    const previewUrl = URL.createObjectURL(file);
+    setUploadedFile(file);
+    setFilePreview(previewUrl);
+    setError('');
+  };
+
+  const handleRemoveFile = () => {
+    if (filePreview) {
+      URL.revokeObjectURL(filePreview);
+    }
+    setUploadedFile(null);
+    setFilePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      // 模拟文件输入事件
+      const event = { target: { files: [file] } } as React.ChangeEvent<HTMLInputElement>;
+      handleFileUpload(event);
     }
   };
 
@@ -139,6 +232,106 @@ const VideoGenerator: React.FC = () => {
                     onChange={(e) => setPrompt(e.target.value)}
                     placeholder="请输入视频描述，例如：一只小鸟在森林中飞翔的场景..."
                   />
+                </div>
+
+                {/* 上传类型选择 */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    上传类型
+                  </label>
+                  <div className="flex space-x-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUploadType('image');
+                        handleRemoveFile();
+                      }}
+                      className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all ${uploadType === 'image' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                    >
+                      上传首帧图片
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUploadType('video');
+                        handleRemoveFile();
+                      }}
+                      className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all ${uploadType === 'video' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                    >
+                      上传基础视频
+                    </button>
+                  </div>
+                </div>
+
+                {/* 文件上传区域 */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    {uploadType === 'image' ? '首帧图片' : '基础视频'}
+                  </label>
+                  <div 
+                    className={`border-2 ${filePreview ? 'border-orange-200' : 'border-dashed border-slate-300'} rounded-xl p-6 text-center transition-all hover:border-orange-500 hover:shadow-[0_0_15px_rgba(249,115,22,0.5)]`}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                  >
+                    {filePreview ? (
+                      <div className="relative">
+                        {uploadType === 'image' ? (
+                          <img 
+                            src={filePreview} 
+                            alt={uploadType === 'image' ? '首帧图片' : '基础视频'} 
+                            className="w-full h-auto max-h-48 object-cover rounded-lg"
+                          />
+                        ) : (
+                          <video 
+                            src={filePreview} 
+                            alt="基础视频" 
+                            className="w-full h-auto max-h-48 object-cover rounded-lg"
+                            controls
+                          />
+                        )}
+                        <div className="absolute top-2 right-2 flex space-x-2">
+                          <label
+                            htmlFor="file-upload"
+                            className="p-2 bg-white/80 rounded-full hover:bg-white hover:shadow-md transition-all cursor-pointer"
+                          >
+                            <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={handleRemoveFile}
+                            className="p-2 bg-white/80 rounded-full hover:bg-white hover:shadow-md transition-all"
+                          >
+                            <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <svg className="w-12 h-12 text-slate-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <p className="text-slate-500 mb-2">点击或拖拽上传{uploadType === 'image' ? '首帧图片' : '基础视频'}</p>
+                        <label
+                          htmlFor="file-upload"
+                          className="px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-all cursor-pointer inline-block"
+                        >
+                          选择文件
+                        </label>
+                        <input
+                          ref={fileInputRef}
+                          id="file-upload"
+                          type="file"
+                          accept={uploadType === 'image' ? 'image/*' : 'video/mp4'}
+                          className="hidden"
+                          onChange={handleFileUpload}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div>
