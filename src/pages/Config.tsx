@@ -53,6 +53,16 @@ const Config: React.FC = () => {
     }
   });
   const [newStudent, setNewStudent] = useState({ studentId: '', name: '' });
+  const [batchInput, setBatchInput] = useState('');
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [batchResult, setBatchResult] = useState<{
+    total: number;
+    added: number;
+    duplicated: number;
+    invalid: number;
+    invalidLines: string[];
+    duplicatedIds: string[];
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -120,6 +130,10 @@ const Config: React.FC = () => {
     fetchConfig();
   }, []);
 
+  useEffect(() => {
+    setSelectedStudentIds((prev) => prev.filter((id) => students.some((student) => student.id === id)));
+  }, [students]);
+
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStudent.studentId || !newStudent.name) {
@@ -174,6 +188,94 @@ const Config: React.FC = () => {
         fetchStudents();
       } else {
         setError(data.error || '删除失败');
+      }
+    } catch (err) {
+      setError('网络错误，请重试');
+    } finally {
+      setLoading(false);
+      setTimeout(() => setSuccess(''), 3000);
+    }
+  };
+
+  const handleToggleSelectStudent = (id: string) => {
+    setSelectedStudentIds((prev) => (
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    ));
+  };
+
+  const handleToggleSelectAllStudents = () => {
+    if (students.length === 0) return;
+    if (selectedStudentIds.length === students.length) {
+      setSelectedStudentIds([]);
+      return;
+    }
+    setSelectedStudentIds(students.map((student) => student.id));
+  };
+
+  const handleBatchDeleteStudents = async () => {
+    if (selectedStudentIds.length === 0) {
+      setError('请先选择要删除的学生');
+      return;
+    }
+
+    if (!confirm(`确定要批量删除 ${selectedStudentIds.length} 名学生吗？`)) return;
+
+    setError('');
+    setSuccess('');
+    setLoading(true);
+
+    try {
+      const response = await fetch('/api/auth/students/batch-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedStudentIds }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        const deletedCount = data.data?.deleted ?? 0;
+        setSuccess(`批量删除成功：已删除 ${deletedCount} 人`);
+        setSelectedStudentIds([]);
+        fetchStudents();
+      } else {
+        setError(data.error || '批量删除失败');
+      }
+    } catch (err) {
+      setError('网络错误，请重试');
+    } finally {
+      setLoading(false);
+      setTimeout(() => setSuccess(''), 3000);
+    }
+  };
+
+  const handleBatchImport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!batchInput.trim()) {
+      setError('请先输入要导入的学生数据');
+      return;
+    }
+
+    setError('');
+    setSuccess('');
+    setBatchResult(null);
+    setLoading(true);
+
+    try {
+      const response = await fetch('/api/auth/students/batch-import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: batchInput }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        const result = data.data;
+        setBatchResult(result);
+        setSuccess(`批量导入完成：新增 ${result.added} 人`);
+        setBatchInput('');
+        fetchStudents();
+      } else {
+        setError(data.error || '批量导入失败');
       }
     } catch (err) {
       setError('网络错误，请重试');
@@ -518,6 +620,40 @@ const Config: React.FC = () => {
               <span className="mr-3">👥</span>
               学生名单管理
             </h2>
+            <form onSubmit={handleBatchImport} className="mb-8 p-5 border-2 border-dashed border-emerald-200 rounded-2xl bg-emerald-50/40">
+              <h3 className="text-lg font-semibold text-slate-800 mb-2">批量导入学生</h3>
+              <p className="text-sm text-slate-600 mb-4">
+                每行一条，支持格式：`学号,姓名` / `学号 姓名` / `学号[TAB]姓名`
+              </p>
+              <textarea
+                value={batchInput}
+                onChange={(e) => setBatchInput(e.target.value)}
+                placeholder={`2026001,张三\n2026002 李四\n2026003\t王五`}
+                rows={6}
+                className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 transition-all text-slate-800 mb-4"
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 focus:outline-none focus:ring-4 focus:ring-emerald-200 transition-all disabled:opacity-50 font-semibold"
+              >
+                {loading ? '导入中...' : '📥 批量导入'}
+              </button>
+              {batchResult && (
+                <div className="mt-4 p-4 bg-white border border-emerald-200 rounded-xl text-sm text-slate-700 space-y-1">
+                  <p>总行数：{batchResult.total}</p>
+                  <p>成功新增：{batchResult.added}</p>
+                  <p>重复学号：{batchResult.duplicated}</p>
+                  <p>格式错误：{batchResult.invalid}</p>
+                  {batchResult.duplicatedIds.length > 0 && (
+                    <p>重复示例：{batchResult.duplicatedIds.join('、')}</p>
+                  )}
+                  {batchResult.invalidLines.length > 0 && (
+                    <p>错误行示例：{batchResult.invalidLines.join(' | ')}</p>
+                  )}
+                </div>
+              )}
+            </form>
             <form onSubmit={handleAddStudent} className="mb-8">
               <div className="grid md:grid-cols-2 gap-4 mb-4">
                 <div>
@@ -554,9 +690,39 @@ const Config: React.FC = () => {
               </button>
             </form>
             <div className="overflow-hidden rounded-2xl border border-slate-200">
+              <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap gap-3 items-center justify-between">
+                <p className="text-sm text-slate-600">
+                  已选择 {selectedStudentIds.length} / {students.length} 人
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleToggleSelectAllStudents}
+                    className="px-3 py-1.5 text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors"
+                  >
+                    {selectedStudentIds.length === students.length && students.length > 0 ? '取消全选' : '全选'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBatchDeleteStudents}
+                    disabled={loading || selectedStudentIds.length === 0}
+                    className="px-3 py-1.5 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                  >
+                    {loading ? '处理中...' : '批量删除'}
+                  </button>
+                </div>
+              </div>
               <table className="min-w-full divide-y divide-slate-200">
                 <thead className="bg-slate-50">
                   <tr>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                      <input
+                        type="checkbox"
+                        checked={students.length > 0 && selectedStudentIds.length === students.length}
+                        onChange={handleToggleSelectAllStudents}
+                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                    </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                       学号
                     </th>
@@ -571,6 +737,14 @@ const Config: React.FC = () => {
                 <tbody className="bg-white divide-y divide-slate-200">
                   {students.map((student) => (
                     <tr key={student.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
+                        <input
+                          type="checkbox"
+                          checked={selectedStudentIds.includes(student.id)}
+                          onChange={() => handleToggleSelectStudent(student.id)}
+                          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                        />
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
                         {student.studentId}
                       </td>
