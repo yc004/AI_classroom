@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
 
 interface PageTransitionProps {
@@ -6,19 +7,17 @@ interface PageTransitionProps {
   className?: string;
 }
 
-const PageTransition: React.FC<PageTransitionProps> = ({
-  children,
-  className,
-}) => {
+const PageTransition: React.FC<PageTransitionProps> = ({ children, className }) => {
   return (
-    <div
-      className={cn(
-        'animate-fade-in-up',
-        className
-      )}
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+      className={cn('min-h-screen', className)}
     >
       {children}
-    </div>
+    </motion.div>
   );
 };
 
