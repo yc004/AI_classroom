@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import Button from '../components/Button';
+import Input from '../components/Input';
+import PageTransition from '../components/PageTransition';
 
 const Login: React.FC = () => {
   const [studentId, setStudentId] = useState('');
@@ -38,106 +41,115 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl mb-4 shadow-lg">
-            <span className="text-4xl">🤖</span>
-          </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
-            AI 授课系统
-          </h1>
-          <p className="text-slate-600 text-lg">探索人工智能的无限可能</p>
+    <PageTransition className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-950 flex flex-col md:flex-row">
+      {/* 左侧背景和标语 */}
+      <div className="md:w-1/2 relative flex items-center justify-center p-8 overflow-hidden">
+        {/* 动态光斑效果 */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/30 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-600/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+          <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-cyan-600/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
         </div>
+        
+        <div className="relative z-10 text-center">
+          <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl mb-6 shadow-lg">
+            <span className="text-5xl">🤖</span>
+          </div>
+          <h1 className="text-5xl font-bold text-white mb-4">
+            AI Classroom
+          </h1>
+          <p className="text-xl text-white/80 max-w-md mx-auto">
+            探索人工智能的无限可能，开启智慧学习之旅
+          </p>
+          <div className="mt-8 space-y-2 text-white/60 text-sm">
+            <p>🚀 智能文本生成</p>
+            <p>🎨 创意图像创作</p>
+            <p>🎬 精彩视频生成</p>
+          </div>
+        </div>
+      </div>
 
-        <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 p-8">
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl">
-              {error}
-            </div>
-          )}
+      {/* 右侧登录卡片 */}
+      <div className="md:w-1/2 flex items-center justify-center p-8">
+        <div className="w-full max-w-md">
+          {/* 教师入口按钮 */}
+          <div className="flex justify-end mb-6">
+            <a 
+              href="/config" 
+              className="text-sm text-white/70 hover:text-white transition-colors flex items-center gap-2"
+            >
+              <span>👨‍🏫</span>
+              <span>教师入口</span>
+            </a>
+          </div>
 
-          <form className="space-y-6" onSubmit={handleLogin}>
-            <div>
-              <label htmlFor="studentId" className="block text-sm font-semibold text-slate-700 mb-2">
-                学号
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <span className="text-slate-400">👤</span>
-                </div>
-                <input
-                  id="studentId"
-                  name="studentId"
-                  type="text"
-                  required
-                  className="w-full pl-12 pr-4 py-4 border-2 border-slate-200 rounded-2xl bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all text-slate-800 placeholder-slate-400 text-lg"
-                  value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
-                  placeholder="请输入学号"
-                />
+          <div className="rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 p-8 shadow-xl">
+            <h2 className="text-3xl font-bold text-white mb-8 text-center">
+              学生登录
+            </h2>
+
+            {error && (
+              <div className="mb-6 p-4 bg-red-500/20 border border-red-500/30 text-red-400 rounded-2xl">
+                {error}
               </div>
-            </div>
+            )}
 
-            <div>
-              <label htmlFor="name" className="block text-sm font-semibold text-slate-700 mb-2">
-                姓名
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <span className="text-slate-400">✏️</span>
-                </div>
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  required
-                  className="w-full pl-12 pr-4 py-4 border-2 border-slate-200 rounded-2xl bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all text-slate-800 placeholder-slate-400 text-lg"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="请输入姓名"
-                />
-              </div>
-            </div>
+            <form className="space-y-6" onSubmit={handleLogin}>
+              <Input
+                label="学号"
+                id="studentId"
+                name="studentId"
+                type="text"
+                required
+                value={studentId}
+                onChange={(e) => setStudentId(e.target.value)}
+                placeholder="请输入学号"
+                prefixIcon="👤"
+                error={error}
+                fullWidth
+              />
 
-            <div>
-              <button
+              <Input
+                label="姓名"
+                id="name"
+                name="name"
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="请输入姓名"
+                prefixIcon="✏️"
+                error={error}
+                fullWidth
+              />
+
+              <Button
                 type="submit"
                 disabled={loading}
-                className="group relative w-full flex justify-center py-4 px-4 border border-transparent text-lg font-bold rounded-2xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transition-all"
+                loading={loading}
+                fullWidth
+                glow
+                className="animate-pulse-slow bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
-                {loading ? (
-                  <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    登录中...
-                  </span>
-                ) : (
-                  '进入 AI 世界'
-                )}
-              </button>
-            </div>
-          </form>
+                {loading ? '登录中...' : '进入课堂'}
+              </Button>
+            </form>
 
-          <div className="mt-8 pt-6 border-t border-slate-100">
-            <p className="text-center text-sm text-slate-500">
-              教师入口：{' '}
-              <a href="/config" className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">
-                配置管理
-              </a>
+            <div className="mt-8 pt-6 border-t border-white/10">
+              <p className="text-center text-sm text-white/60">
+                八年级学生专用系统
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-8 text-center">
+            <p className="text-white/40 text-sm">
+              © 2026 AI Classroom
             </p>
           </div>
         </div>
-
-        <div className="mt-8 text-center">
-          <p className="text-slate-500 text-sm">
-            Powered by AI Technology
-          </p>
-        </div>
       </div>
-    </div>
+    </PageTransition>
   );
 };
 
