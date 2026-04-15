@@ -28,6 +28,16 @@ export default {
           '0%': { opacity: '0', transform: 'translateY(10px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        // 淡出下移动画
+        'fade-out-down': {
+          '0%': { opacity: '1', transform: 'translateY(0)' },
+          '100%': { opacity: '0', transform: 'translateY(10px)' },
+        },
+        // 滑动进入动画
+        'slide-in': {
+          '0%': { opacity: '0', transform: 'translateX(100%)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
         // 缩放弹出动画
         'scale-in': {
           '0%': { opacity: '0', transform: 'scale(0.95)' },
@@ -43,6 +53,8 @@ export default {
         'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
         'shimmer': 'shimmer 1.5s linear infinite',
         'fade-in-up': 'fade-in-up 0.3s ease-out',
+        'fade-out-down': 'fade-out-down 0.15s ease-in',
+        'slide-in': 'slide-in 0.3s ease-out',
         'scale-in': 'scale-in 0.2s ease-out',
         'blink-cursor': 'blink-cursor 1s step-end infinite',
       },
