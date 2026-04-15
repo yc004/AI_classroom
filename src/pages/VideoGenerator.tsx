@@ -192,12 +192,12 @@ const VideoGenerator: React.FC = () => {
                     <option value={20}>20秒 (详细)</option>
                   </Select>
 
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-white/80">首尾帧上传</label>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="block text-xs text-white/60">开始帧</label>
+                  <div className="space-y-6">
+                    <div className="space-y-3">
+                      <label className="block text-sm font-medium text-white/90">首尾帧上传</label>
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <label className="block text-xs text-white/70">开始帧</label>
                           <input
                             type="file"
                             accept="image/*"
@@ -211,23 +211,23 @@ const VideoGenerator: React.FC = () => {
                           />
                           <label
                             htmlFor="start-frame-upload"
-                            className="cursor-pointer p-3 border-2 border-dashed border-white/20 rounded-xl hover:border-white/40 transition-colors text-center"
+                            className="cursor-pointer p-5 border-2 border-dashed border-white/30 rounded-2xl hover:border-white/50 transition-all duration-300 text-center bg-white/5"
                           >
-                            <div className="text-xl mb-1">🎬</div>
-                            <p className="text-xs text-white/70">上传开始帧</p>
+                            <div className="text-3xl mb-2">🎬</div>
+                            <p className="text-sm text-white/80">上传开始帧</p>
                           </label>
                           {startFrame && (
-                            <div className="mt-2">
+                            <div className="mt-3">
                               <img 
                                 src={URL.createObjectURL(startFrame)} 
                                 alt="开始帧" 
-                                className="w-full h-20 rounded-lg object-cover border border-white/10"
+                                className="w-full h-24 rounded-xl object-cover border border-white/20 shadow-sm"
                               />
                             </div>
                           )}
                         </div>
-                        <div className="space-y-2">
-                          <label className="block text-xs text-white/60">结束帧</label>
+                        <div className="space-y-3">
+                          <label className="block text-xs text-white/70">结束帧</label>
                           <input
                             type="file"
                             accept="image/*"
@@ -241,17 +241,17 @@ const VideoGenerator: React.FC = () => {
                           />
                           <label
                             htmlFor="end-frame-upload"
-                            className="cursor-pointer p-3 border-2 border-dashed border-white/20 rounded-xl hover:border-white/40 transition-colors text-center"
+                            className="cursor-pointer p-5 border-2 border-dashed border-white/30 rounded-2xl hover:border-white/50 transition-all duration-300 text-center bg-white/5"
                           >
-                            <div className="text-xl mb-1">🎭</div>
-                            <p className="text-xs text-white/70">上传结束帧</p>
+                            <div className="text-3xl mb-2">🎭</div>
+                            <p className="text-sm text-white/80">上传结束帧</p>
                           </label>
                           {endFrame && (
-                            <div className="mt-2">
+                            <div className="mt-3">
                               <img 
                                 src={URL.createObjectURL(endFrame)} 
                                 alt="结束帧" 
-                                className="w-full h-20 rounded-lg object-cover border border-white/10"
+                                className="w-full h-24 rounded-xl object-cover border border-white/20 shadow-sm"
                               />
                             </div>
                           )}
@@ -259,8 +259,8 @@ const VideoGenerator: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-white/80">参考图上传</label>
+                    <div className="space-y-3">
+                      <label className="block text-sm font-medium text-white/90">参考图上传</label>
                       <input
                         type="file"
                         accept="image/*"
@@ -274,17 +274,17 @@ const VideoGenerator: React.FC = () => {
                       />
                       <label
                         htmlFor="reference-image-upload"
-                        className="cursor-pointer p-4 border-2 border-dashed border-white/20 rounded-xl hover:border-white/40 transition-colors text-center"
+                        className="cursor-pointer p-6 border-2 border-dashed border-white/30 rounded-2xl hover:border-white/50 transition-all duration-300 text-center bg-white/5"
                       >
-                        <div className="text-2xl mb-2">🖼️</div>
-                        <p className="text-sm text-white/70">点击上传参考图</p>
+                        <div className="text-4xl mb-3">🖼️</div>
+                        <p className="text-sm text-white/80">点击上传参考图</p>
                       </label>
                       {referenceImage && (
-                        <div className="mt-2">
+                        <div className="mt-3">
                           <img 
                             src={URL.createObjectURL(referenceImage)} 
                             alt="参考图" 
-                            className="w-full h-32 rounded-lg object-cover border border-white/10"
+                            className="w-full h-36 rounded-xl object-cover border border-white/20 shadow-sm"
                           />
                         </div>
                       )}

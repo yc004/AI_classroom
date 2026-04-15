@@ -182,37 +182,35 @@ const ImageGenerator: React.FC = () => {
                     <option value="1536x1024">1536x1024 (横向)</option>
                   </Select>
 
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-white/80">参考图上传</label>
-                    <div className="flex items-center space-x-4">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            setReferenceImage(e.target.files[0]);
-                          }
-                        }}
-                        className="hidden"
-                        id="reference-image-upload"
-                      />
-                      <label
-                        htmlFor="reference-image-upload"
-                        className="flex-1 cursor-pointer p-4 border-2 border-dashed border-white/20 rounded-xl hover:border-white/40 transition-colors text-center"
-                      >
-                        <div className="text-2xl mb-2">🖼️</div>
-                        <p className="text-sm text-white/70">点击上传参考图</p>
-                      </label>
-                      {referenceImage && (
-                        <div className="flex-shrink-0">
-                          <img 
-                            src={URL.createObjectURL(referenceImage)} 
-                            alt="参考图" 
-                            className="w-16 h-16 rounded-lg object-cover border border-white/10"
-                          />
-                        </div>
-                      )}
-                    </div>
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-white/90">参考图上传</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setReferenceImage(e.target.files[0]);
+                        }
+                      }}
+                      className="hidden"
+                      id="reference-image-upload"
+                    />
+                    <label
+                      htmlFor="reference-image-upload"
+                      className="cursor-pointer p-6 border-2 border-dashed border-white/30 rounded-2xl hover:border-white/50 transition-all duration-300 text-center bg-white/5"
+                    >
+                      <div className="text-4xl mb-3">🖼️</div>
+                      <p className="text-sm text-white/80">点击上传参考图</p>
+                    </label>
+                    {referenceImage && (
+                      <div className="mt-3">
+                        <img 
+                          src={URL.createObjectURL(referenceImage)} 
+                          alt="参考图" 
+                          className="w-full h-36 rounded-xl object-cover border border-white/20 shadow-sm"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <Button
