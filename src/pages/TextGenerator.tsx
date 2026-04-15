@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Button from '../components/Button';
 import Textarea from '../components/Textarea';
 import Card from '../components/Card';
+import PageTransition from '../components/PageTransition';
 
 interface Message {
   id: string;
@@ -130,7 +131,7 @@ const TextGenerator: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-900 to-slate-950">
+    <PageTransition className="flex flex-col h-screen bg-gradient-to-br from-slate-900 to-slate-950">
       {/* 顶部导航栏 */}
       <nav className="bg-white/5 backdrop-blur-md border-b border-white/10 px-4 py-3">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
@@ -252,7 +253,7 @@ const TextGenerator: React.FC = () => {
           </form>
         </div>
       </div>
-    </div>
+    </PageTransition>
   );
 };
 

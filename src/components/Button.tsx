@@ -23,13 +23,13 @@ const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseClasses = cn(
-    'inline-flex items-center justify-center rounded-2xl font-semibold transition-all duration-300 focus:outline-none focus:ring-4',
+    'inline-flex items-center justify-center rounded-2xl font-semibold transition-all duration-300 ease-out focus:outline-none focus:ring-4 hover:-translate-y-0.5 hover:scale-105 active:scale-95',
     fullWidth && 'w-full',
     size === 'sm' && 'px-4 py-2 text-sm',
     size === 'md' && 'px-6 py-4 text-base',
     size === 'lg' && 'px-8 py-5 text-lg',
-    disabled && 'opacity-50 cursor-not-allowed',
-    glow && 'shadow-lg hover:shadow-xl',
+    disabled && 'opacity-50 cursor-not-allowed hover:translate-y-0 hover:scale-100 active:scale-100',
+    glow && 'shadow-lg hover:shadow-xl animate-pulse-glow',
     className
   );
 

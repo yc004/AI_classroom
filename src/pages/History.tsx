@@ -3,6 +3,7 @@ import Button from '../components/Button';
 import Input from '../components/Input';
 import Select from '../components/Select';
 import Card from '../components/Card';
+import PageTransition from '../components/PageTransition';
 
 interface HistoryItem {
   id: string;
@@ -123,7 +124,7 @@ const History: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-950">
+    <PageTransition className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-950">
       <nav className="bg-white/5 backdrop-blur-md border-b border-white/10 px-4 py-4">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-4">
@@ -227,8 +228,12 @@ const History: React.FC = () => {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredHistory.map((item) => (
-              <Card key={item.id} className="group overflow-hidden transition-all duration-300 hover:translate-y-[-5px] hover:shadow-xl">
+            {filteredHistory.map((item, index) => (
+              <Card 
+                key={item.id} 
+                className="group overflow-hidden transition-all duration-300 hover:translate-y-[-5px] hover:shadow-xl animate-fade-in-up"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-2">
                     <span className="text-xl">{getTypeIcon(item.type)}</span>
@@ -289,9 +294,9 @@ const History: React.FC = () => {
               </Card>
             ))}
           </div>
-        )}
+        )}</div>
       </div>
-    </div>
+    </PageTransition>
   );
 };
 

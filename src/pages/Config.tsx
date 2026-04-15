@@ -4,6 +4,7 @@ import Input from '../components/Input';
 import Textarea from '../components/Textarea';
 import Select from '../components/Select';
 import Card from '../components/Card';
+import PageTransition from '../components/PageTransition';
 
 interface Student {
   id: string;
@@ -318,7 +319,7 @@ const Config: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-950">
+    <PageTransition className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-950">
       <nav className="bg-white/5 backdrop-blur-md border-b border-white/10 px-4 py-4">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <a href="/" className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
@@ -731,7 +732,7 @@ const Config: React.FC = () => {
           </Card>
         )}
       </div>
-    </div>
+    </PageTransition>
   );
 };
 

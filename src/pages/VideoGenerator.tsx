@@ -3,6 +3,7 @@ import Button from '../components/Button';
 import Textarea from '../components/Textarea';
 import Select from '../components/Select';
 import Card from '../components/Card';
+import PageTransition from '../components/PageTransition';
 
 const VideoGenerator: React.FC = () => {
   const [prompt, setPrompt] = useState('');
@@ -77,7 +78,7 @@ const VideoGenerator: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-900 to-slate-950">
+    <PageTransition className="flex flex-col h-screen bg-gradient-to-br from-slate-900 to-slate-950">
       {/* 顶部导航栏 */}
       <nav className="bg-white/5 backdrop-blur-md border-b border-white/10 px-4 py-3">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
@@ -219,7 +220,7 @@ const VideoGenerator: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </PageTransition>
   );
 };
 

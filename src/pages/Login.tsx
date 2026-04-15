@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Button from '../components/Button';
 import Input from '../components/Input';
+import PageTransition from '../components/PageTransition';
 
 const Login: React.FC = () => {
   const [studentId, setStudentId] = useState('');
@@ -40,7 +41,7 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-950 flex flex-col md:flex-row">
+    <PageTransition className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-950 flex flex-col md:flex-row">
       {/* 左侧背景和标语 */}
       <div className="md:w-1/2 relative flex items-center justify-center p-8 overflow-hidden">
         {/* 动态光斑效果 */}
@@ -148,7 +149,7 @@ const Login: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </PageTransition>
   );
 };
 
