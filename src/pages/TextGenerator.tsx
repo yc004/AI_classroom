@@ -8,6 +8,12 @@ interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  imageUrl?: string;
+  files?: Array<{
+    name: string;
+    url: string;
+    type: string;
+  }>;
   timestamp: number;
 }
 
@@ -23,7 +29,42 @@ const TextGenerator: React.FC = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [studentInfo, setStudentInfo] = useState({ id: '', name: '' });
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // 清理ObjectURL的函数
+  const cleanupObjectUrls = () => {
+    messages.forEach(message => {
+      if (message.imageUrl && message.imageUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(message.imageUrl);
+      }
+      if (message.files) {
+        message.files.forEach(file => {
+          if (file.url.startsWith('blob:')) {
+            URL.revokeObjectURL(file.url);
+          }
+        });
+      }
+    });
+  };
+
+  // 组件卸载时清理
+  useEffect(() => {
+    return () => {
+      cleanupObjectUrls();
+    };
+  }, []);
+
+  // 图片转Base64的辅助函数
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+      reader.readAsDataURL(file);
+    });
+  };
 
   // 自动滚动到底部
   const scrollToBottom = () => {
@@ -47,18 +88,38 @@ const TextGenerator: React.FC = () => {
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() && !selectedImage && selectedFiles.length === 0) return;
+
+    // 处理图片预览
+    let imageUrl: string | undefined;
+    if (selectedImage) {
+      imageUrl = URL.createObjectURL(selectedImage);
+    }
+
+    // 处理文件预览
+    let files: Array<{ name: string; url: string; type: string }> | undefined;
+    if (selectedFiles.length > 0) {
+      files = selectedFiles.map(file => ({
+        name: file.name,
+        url: URL.createObjectURL(file),
+        type: file.type
+      }));
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
       content: input.trim(),
+      imageUrl,
+      files,
       timestamp: Date.now()
     };
 
     setMessages(prev => [...prev, userMessage]);
     const prompt = input.trim();
     setInput('');
+    setSelectedImage(null);
+    setSelectedFiles([]);
     setLoading(true);
 
     try {
@@ -67,20 +128,41 @@ const TextGenerator: React.FC = () => {
       const configData = await configResponse.json();
       const textModel = configData.success ? configData.data.textModel : { provider: 'deepseek' };
       
+      // 准备请求数据
+      const requestData: any = {
+        prompt,
+        model: textModel.provider,
+        parameters: {
+          maxTokens: 1000,
+        },
+        studentId: studentInfo.id,
+        studentName: studentInfo.name,
+      };
+
+      // 如果有图片，转换为Base64
+      if (selectedImage) {
+        const base64Image = await fileToBase64(selectedImage);
+        requestData.image = base64Image;
+      }
+
+      // 如果有文件，转换为Base64
+      if (selectedFiles.length > 0) {
+        const base64Files = await Promise.all(
+          selectedFiles.map(async (file) => ({
+            name: file.name,
+            type: file.type,
+            content: await fileToBase64(file)
+          }))
+        );
+        requestData.files = base64Files;
+      }
+      
       const response = await fetch('/api/text/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          prompt,
-          model: textModel.provider,
-          parameters: {
-            maxTokens: 1000,
-          },
-          studentId: studentInfo.id,
-          studentName: studentInfo.name,
-        }),
+        body: JSON.stringify(requestData),
       });
 
       const data = await response.json();
@@ -186,6 +268,42 @@ const TextGenerator: React.FC = () => {
                   </div>
                   {/* 消息内容 */}
                   <div className={`p-4 rounded-2xl ${message.role === 'user' ? 'bg-gradient-to-br from-blue-600 to-purple-600 text-white rounded-tr-sm' : 'bg-white/5 backdrop-blur-sm border border-white/10 text-white rounded-tl-sm'}`}>
+                    {message.imageUrl && (
+                      <div className="mb-3">
+                        <img 
+                          src={message.imageUrl} 
+                          alt="Message image" 
+                          className="w-full max-w-sm rounded-lg border border-white/10 shadow-sm object-cover"
+                        />
+                      </div>
+                    )}
+                    {message.files && message.files.length > 0 && (
+                      <div className="mb-3 space-y-2">
+                        {message.files.map((file, index) => (
+                          <div key={index} className="flex items-center space-x-2 p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
+                          <div className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">{file.name}</div>
+                            <div className="text-xs text-white/60">{file.type || '文件'}</div>
+                          </div>
+                          <a 
+                            href={file.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="p-1.5 rounded-lg hover:bg-white/20 transition-colors"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </a>
+                        </div>)
+                        )}
+                      </div>
+                    )}
                     <div className="whitespace-pre-wrap text-sm md:text-base leading-relaxed">{message.content}</div>
                     <div className={`text-xs mt-2 ${message.role === 'user' ? 'text-blue-200' : 'text-white/60'}`}>
                       {formatTime(message.timestamp)}
@@ -235,11 +353,82 @@ const TextGenerator: React.FC = () => {
                 }}
                 disabled={loading}
                 fullWidth
-                className="pr-16 min-h-[80px]"
+                className="pr-36 min-h-[80px]"
               />
+              {/* 文件上传按钮 */}
+              <div className="absolute right-28 bottom-3">
+                <input
+                  type="file"
+                  multiple
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      setSelectedFiles(Array.from(e.target.files));
+                    }
+                  }}
+                  className="hidden"
+                  id="file-upload"
+                />
+                <label
+                  htmlFor="file-upload"
+                  className="cursor-pointer p-3 rounded-xl hover:bg-white/10 transition-colors"
+                >
+                  <svg className="w-5 h-5 text-white/70 hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                </label>
+              </div>
+              {/* 图片上传按钮 */}
+              <div className="absolute right-20 bottom-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setSelectedImage(e.target.files[0]);
+                    }
+                  }}
+                  className="hidden"
+                  id="image-upload"
+                />
+                <label
+                  htmlFor="image-upload"
+                  className="cursor-pointer p-3 rounded-xl hover:bg-white/10 transition-colors"
+                >
+                  <svg className="w-5 h-5 text-white/70 hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </label>
+              </div>
+              {/* 已选择文件预览 */}
+              <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+                {selectedImage && (
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-1 border border-white/10">
+                    <img 
+                      src={URL.createObjectURL(selectedImage)} 
+                      alt="Selected image" 
+                      className="w-10 h-10 rounded-md object-cover"
+                    />
+                  </div>
+                )}
+                {selectedFiles.slice(0, 3).map((file, index) => (
+                  <div key={index} className="bg-white/10 backdrop-blur-sm rounded-lg p-1 border border-white/10 flex items-center space-x-1">
+                    <div className="w-8 h-8 flex items-center justify-center rounded-md bg-white/20">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div className="text-xs text-white/80 truncate max-w-[80px]">{file.name}</div>
+                  </div>
+                ))}
+                {selectedFiles.length > 3 && (
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-1 border border-white/10 px-2 text-xs text-white/80">
+                    +{selectedFiles.length - 3}
+                  </div>
+                )}
+              </div>
               <Button
                 type="submit"
-                disabled={loading || !input.trim()}
+                disabled={loading || (!input.trim() && !selectedImage && selectedFiles.length === 0)}
                 loading={loading}
                 size="sm"
                 variant="primary"
