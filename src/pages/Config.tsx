@@ -20,16 +20,28 @@ interface ModelConfig {
   apiKey: string;
 }
 
+interface VideoModelConfig {
+  modelName: string;
+  apiKey: string;
+}
+
 interface Config {
   textModel: ModelConfig;
   imageModel: ModelConfig;
-  videoModel: ModelConfig;
+  videoModel: VideoModelConfig;
   systemSettings: {
     port: number;
     allowLanAccess: boolean;
     rateLimit: number;
   };
 }
+
+const VIDEO_MODEL_OPTIONS = [
+  { value: 'doubao-seedance-1-0-lite-t2v-250428', label: 'Seedance 1.0 Lite T2V' },
+  { value: 'doubao-seedance-1-0-pro-250528', label: 'Seedance 1.0 Pro' },
+  { value: 'doubao-seedance-1-0-pro-fast-250610', label: 'Seedance 1.0 Pro Fast' },
+  { value: 'doubao-seedance-1-5-pro-251215', label: 'Seedance 1.5 Pro' }
+];
 
 const Config: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
@@ -47,9 +59,7 @@ const Config: React.FC = () => {
       apiKey: ''
     },
     videoModel: {
-      provider: 'deepseek',
-      baseUrl: 'https://api.deepseek.com/v1',
-      modelName: 'deepseek-video',
+      modelName: 'doubao-seedance-1-0-lite-t2v-250428',
       apiKey: ''
     },
     systemSettings: {
@@ -94,8 +104,13 @@ const Config: React.FC = () => {
         // 检查返回的数据结构是否符合新的格式
         const configData = data.data;
         if (configData.textModel && configData.imageModel && configData.videoModel) {
-          // 新格式，直接使用
-          setConfig(configData);
+          setConfig({
+            ...configData,
+            videoModel: {
+              modelName: configData.videoModel.modelName || 'doubao-seedance-1-0-lite-t2v-250428',
+              apiKey: configData.videoModel.apiKey || ''
+            }
+          });
         } else {
           // 旧格式，转换为新格式
           const transformedConfig: Config = {
@@ -112,9 +127,7 @@ const Config: React.FC = () => {
               apiKey: String(Object.values(configData.apiKeys || {})[0] || '')
             },
             videoModel: {
-              provider: configData.modelSettings?.defaultModel || 'deepseek',
-              baseUrl: 'https://api.deepseek.com/v1',
-              modelName: 'deepseek-video',
+              modelName: 'doubao-seedance-1-0-lite-t2v-250428',
               apiKey: String(Object.values(configData.apiKeys || {})[0] || '')
             },
             systemSettings: configData.systemSettings || {
@@ -293,6 +306,10 @@ const Config: React.FC = () => {
 
   const handleUpdateConfig = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (activeTab === 'videoModel' && !config.videoModel.modelName.trim()) {
+      setError('请选择或填写视频模型 ID');
+      return;
+    }
     setError('');
     setLoading(true);
 
@@ -521,42 +538,45 @@ const Config: React.FC = () => {
         {activeTab === 'videoModel' && (
           <Card title="视频模型配置" glow>
             <form onSubmit={handleUpdateConfig} className="space-y-6">
+              {(() => {
+                const isCustomModel = !VIDEO_MODEL_OPTIONS.some((item) => item.value === config.videoModel.modelName);
+                return (
+                  <>
               <Select
-                label="模型提供商"
-                id="videoProvider"
-                value={config.videoModel.provider}
+                label="模型选择"
+                id="videoModelName"
+                value={isCustomModel ? '__custom__' : config.videoModel.modelName}
                 onChange={(e) => setConfig({
                   ...config,
-                  videoModel: { ...config.videoModel, provider: e.target.value }
+                  videoModel: {
+                    ...config.videoModel,
+                    modelName: e.target.value === '__custom__' ? '' : e.target.value
+                  }
                 })}
                 fullWidth
               >
-                <option value="openai">OpenAI</option>
-                <option value="deepseek">DeepSeek</option>
-                <option value="custom">自定义</option>
+                {VIDEO_MODEL_OPTIONS.map((item) => (
+                  <option key={item.value} value={item.value}>{item.label}</option>
+                ))}
+                <option value="__custom__">手动填写最新模型 ID</option>
               </Select>
-              <Input
-                label="API Base URL"
-                id="videoBaseUrl"
-                type="text"
-                value={config.videoModel.baseUrl}
-                onChange={(e) => setConfig({
-                  ...config,
-                  videoModel: { ...config.videoModel, baseUrl: e.target.value }
-                })}
-                fullWidth
-              />
-              <Input
-                label="模型名称"
-                id="videoModelName"
-                type="text"
-                value={config.videoModel.modelName}
-                onChange={(e) => setConfig({
-                  ...config,
-                  videoModel: { ...config.videoModel, modelName: e.target.value }
-                })}
-                fullWidth
-              />
+              {(isCustomModel || !config.videoModel.modelName) && (
+                <Input
+                  label="模型 ID"
+                  id="videoModelCustom"
+                  type="text"
+                  value={config.videoModel.modelName}
+                  onChange={(e) => setConfig({
+                    ...config,
+                    videoModel: { ...config.videoModel, modelName: e.target.value }
+                  })}
+                  placeholder="例如：doubao-seedance-2-0-..."
+                  fullWidth
+                />
+              )}
+                  </>
+                );
+              })()}
               <Input
                 label="API Key"
                 id="videoApiKey"

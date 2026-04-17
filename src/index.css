@@ -12,3 +12,17 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+.ui-select {
+  color-scheme: dark;
+}
+
+.ui-select option {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+.ui-select option:checked {
+  background-color: #1e3a8a;
+  color: #ffffff;
+}

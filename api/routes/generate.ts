@@ -40,9 +40,7 @@ const ensureDataDir = () => {
         apiKey: ''
       },
       videoModel: {
-        provider: 'deepseek',
-        baseUrl: 'https://api.deepseek.com/v1',
-        modelName: 'deepseek-video',
+        modelName: 'doubao-seedance-1-0-lite-t2v-250428',
         apiKey: ''
       },
       systemSettings: {
@@ -58,7 +56,14 @@ const ensureDataDir = () => {
 const getConfig = (): any => {
   ensureDataDir();
   const data = fs.readFileSync(configFilePath, 'utf8');
-  return JSON.parse(data);
+  const parsed = JSON.parse(data);
+  return {
+    ...parsed,
+    videoModel: {
+      modelName: parsed.videoModel?.modelName || 'doubao-seedance-1-0-lite-t2v-250428',
+      apiKey: parsed.videoModel?.apiKey || ''
+    }
+  };
 };
 
 // 保存历史记录
@@ -170,66 +175,53 @@ const generateImage = async (prompt: string, model: string, parameters: any): Pr
 };
 
 // 视频生成
-const generateVideo = async (prompt: string, model: string, parameters: any): Promise<string> => {
+const generateVideo = async (prompt: string, parameters: any): Promise<string> => {
   const config = getConfig();
   const videoModelConfig = config.videoModel;
   
   try {
-    if (videoModelConfig.provider === 'volcengine') {
-      // 使用火山引擎SDK
-      const client = new ArkRuntimeClient({
-        apiKey: videoModelConfig.apiKey,
-      });
-      
-      // 创建视频生成任务
-      const createResponse = await (client as any).content_generation.tasks.create({
-        model: videoModelConfig.modelName,
-        content: [
-          {
-            type: 'text',
-            text: prompt
-          }
-        ],
-        resolution: parameters.resolution || '720p',
-        ratio: parameters.ratio || '16:9',
-        duration: parameters.duration || 5,
-        ...parameters
-      });
-      
-      const taskId = createResponse.id;
-      
-      // 轮询任务状态
-      let taskStatus = 'queued';
-      let taskResult: any = null;
-      let pollingCount = 0;
-      const maxPollingCount = 60; // 最多轮询60次
-      const pollingInterval = 5000; // 每5秒轮询一次
-      
-      while (taskStatus !== 'succeeded' && taskStatus !== 'failed' && pollingCount < maxPollingCount) {
-        await new Promise(resolve => setTimeout(resolve, pollingInterval));
-        taskResult = await (client as any).content_generation.tasks.get({
-          task_id: taskId
-        });
-        taskStatus = taskResult.status;
-        pollingCount++;
-      }
-      
-      if (taskStatus === 'succeeded' && taskResult.output && taskResult.output.video) {
-        return taskResult.output.video.url || '';
-      } else {
-        throw new Error(`视频生成失败: ${taskResult.error?.message || 'Unknown error'}`);
-      }
-    } else {
-      // 注意：OpenAI目前没有提供视频生成API
-      // 这里使用模拟数据，实际项目中可以接入其他视频生成服务
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          // 使用占位符视频
-          const videoUrl = 'https://example.com/placeholder-video.mp4';
-          resolve(videoUrl);
-        }, 3000);
-      });
+    if (!videoModelConfig.apiKey) {
+      throw new Error('请先在配置页填写火山引擎 API Key');
     }
+
+    const client = ArkRuntimeClient.withApiKey(videoModelConfig.apiKey);
+
+    const createResponse = await client.createContentGenerationTask({
+      model: videoModelConfig.modelName || 'doubao-seedance-1-0-lite-t2v-250428',
+      content: [
+        {
+          type: 'text',
+          text: prompt
+        }
+      ],
+      duration: parameters.duration || 5,
+      ...parameters
+    });
+
+    const taskId = createResponse.id;
+
+    let taskStatus = 'queued';
+    let taskResult: any = null;
+    let pollingCount = 0;
+    const maxPollingCount = 60;
+    const pollingInterval = 5000;
+
+    while (taskStatus !== 'succeeded' && taskStatus !== 'failed' && pollingCount < maxPollingCount) {
+      await new Promise(resolve => setTimeout(resolve, pollingInterval));
+      taskResult = await client.getContentGenerationTask(taskId);
+      taskStatus = taskResult.status;
+      pollingCount++;
+    }
+
+    if (taskStatus === 'succeeded' && taskResult?.content?.video_url) {
+      return taskResult.content.video_url;
+    }
+
+    if (taskStatus === 'failed') {
+      throw new Error(`视频生成失败: ${taskResult?.error?.message || 'Unknown error'}`);
+    }
+
+    throw new Error('视频生成超时，请稍后重试');
   } catch (error) {
     console.error('视频生成失败:', error);
     throw error;
@@ -300,14 +292,15 @@ router.post('/image/generate', async (req, res) => {
 
 // 视频生成
 router.post('/video/generate', async (req, res) => {
-  const { prompt, model, parameters, studentId, studentName } = req.body;
+  const { prompt, parameters, studentId, studentName } = req.body;
   
   if (!prompt || !studentId || !studentName) {
     return res.json({ success: false, error: '请输入提示词和学生信息' });
   }
   
   try {
-    const result = await generateVideo(prompt, model || 'deepseek', parameters || {});
+    const result = await generateVideo(prompt, parameters || {});
+    const currentVideoModel = getConfig().videoModel?.modelName || 'doubao-seedance-1-0-lite-t2v-250428';
     
     // 保存历史记录
     const historyItem = {
@@ -317,7 +310,7 @@ router.post('/video/generate', async (req, res) => {
       parameters,
       result,
       timestamp: Date.now(),
-      model: model || 'deepseek',
+      model: currentVideoModel,
       studentId,
       studentName
     };
@@ -371,7 +364,10 @@ router.post('/config', (req, res) => {
     const updatedConfig = {
       textModel: textModel || config.textModel,
       imageModel: imageModel || config.imageModel,
-      videoModel: videoModel || config.videoModel,
+      videoModel: {
+        modelName: videoModel?.modelName ?? config.videoModel?.modelName ?? 'doubao-seedance-1-0-lite-t2v-250428',
+        apiKey: videoModel?.apiKey ?? config.videoModel?.apiKey ?? ''
+      },
       systemSettings: systemSettings || config.systemSettings
     };
     
